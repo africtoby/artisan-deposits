@@ -1,9 +1,15 @@
 import { z } from "zod";
 
+// A line like `DIRECT_URL=` in .env.local arrives as "" rather than missing. For optional
+// settings that should mean "not set", not "set to an empty value".
+const optionalText = z.preprocess(
+  (value) => (value === "" ? undefined : value),
+  z.string().min(1).optional(),
+);
+
 // Optional flags arrive as strings; anything but "true" means off.
 const flag = z
-  .enum(["true", "false"])
-  .optional()
+  .preprocess((value) => (value === "" ? undefined : value), z.enum(["true", "false"]).optional())
   .transform((value) => value === "true");
 
 // 32 random bytes, base64 encoded (44 characters). Generate one with:
@@ -14,14 +20,14 @@ const encryptionKey = z.string().refine((value) => Buffer.from(value, "base64").
 
 const serverSchema = z.object({
   DATABASE_URL: z.string().min(1),
-  DIRECT_URL: z.string().min(1).optional(),
+  DIRECT_URL: optionalText,
   NEXT_PUBLIC_SUPABASE_URL: z.url(),
   NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: z.string().min(1),
   NEXT_PUBLIC_APP_URL: z.url(),
   APP_ENCRYPTION_KEY: encryptionKey,
   // Used from later phases; optional now so Phase 2 can run without them.
-  COINGECKO_API_KEY: z.string().min(1).optional(),
-  ANTHROPIC_API_KEY: z.string().min(1).optional(),
+  COINGECKO_API_KEY: optionalText,
+  ANTHROPIC_API_KEY: optionalText,
   AI_INTAKE_ENABLED: flag,
 });
 

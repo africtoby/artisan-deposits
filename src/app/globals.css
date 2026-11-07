@@ -1,26 +1,117 @@
 @import "tailwindcss";
 
+/* Colors come from indigo cloth dye and a tailor's tape. See brand.md for what each is for.
+   Components use these tokens only; a hex value never appears outside this block. */
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --ground: #eceff7;
+  --surface: #ffffff;
+  --ink: #141b45;
+  --ink-soft: #4a5180;
+  --indigo: #2a3a9c;
+  --tape: #f2d77a;
+  --tape-tint: #fbefc4;
+  --paid: #1b6b47;
+  --paid-tint: #dcefe4;
+  --error: #b3372b;
+  --error-tint: #f7ddd9;
+  --dye-line: #b8bfd9;
+
+  /* shadcn mapping, so any shadcn component picks up the brand */
+  --background: var(--ground);
+  --foreground: var(--ink);
+  --card: var(--surface);
+  --card-foreground: var(--ink);
+  --primary: var(--indigo);
+  --primary-foreground: var(--surface);
+  --muted-foreground: var(--ink-soft);
+  --border: var(--dye-line);
+  --input: var(--ink-soft);
+  --ring: var(--indigo);
+  --destructive: var(--error);
+}
+
+/* Removing Tailwind's default palette means a stray "bg-blue-500" simply does nothing. */
+@theme {
+  --color-*: initial;
+  --color-transparent: transparent;
+  --color-current: currentColor;
+
+  --radius-tape: 2px;
+  --radius-tag: 6px;
+  --radius-control: 12px;
+  --radius-sheet: 20px;
+
+  --text-amount: 64px;
+  --text-amount--line-height: 60px;
+  --text-h1: 36px;
+  --text-h1--line-height: 40px;
+  --text-h2: 26px;
+  --text-h2--line-height: 32px;
+  --text-body: 17px;
+  --text-body--line-height: 26px;
+  --text-small: 14px;
+  --text-small--line-height: 20px;
 }
 
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --color-ground: var(--ground);
+  --color-surface: var(--surface);
+  --color-ink: var(--ink);
+  --color-ink-soft: var(--ink-soft);
+  --color-indigo: var(--indigo);
+  --color-tape: var(--tape);
+  --color-tape-tint: var(--tape-tint);
+  --color-paid: var(--paid);
+  --color-paid-tint: var(--paid-tint);
+  --color-error: var(--error);
+  --color-error-tint: var(--error-tint);
+  --color-dye-line: var(--dye-line);
+
+  --font-display: var(--font-big-shoulders), "Barlow Condensed", sans-serif;
+  --font-sans: var(--font-atkinson), "Atkinson Hyperlegible", system-ui, sans-serif;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+html {
+  background: var(--ground);
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background: var(--ground);
+  color: var(--ink);
+  font-family: var(--font-sans);
+  font-size: 17px;
+  line-height: 26px;
+  font-weight: 400;
+  -webkit-text-size-adjust: 100%;
+}
+
+/* Keyboard focus is always visible: a 3px indigo ring with a 2px gap. */
+:focus-visible {
+  outline: 3px solid var(--indigo);
+  outline-offset: 2px;
+}
+
+/* The two motion moments (see brand.md). Anyone who asks for less motion gets the final state. */
+@keyframes draw-check {
+  from {
+    stroke-dashoffset: 24;
+  }
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+.check-draw {
+  stroke-dasharray: 24;
+  animation: draw-check 300ms ease-out both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .check-draw {
+    animation: none;
+    stroke-dashoffset: 0;
+  }
+  * {
+    transition-duration: 0s !important;
+  }
 }
