@@ -15,6 +15,23 @@ describe("parseServerEnv", () => {
     expect(parseServerEnv(valid).AI_INTAKE_ENABLED).toBe(false);
   });
 
+  it("treats blank optional values as not set", () => {
+    const env = parseServerEnv({
+      ...valid,
+      DIRECT_URL: "",
+      COINGECKO_API_KEY: "",
+      ANTHROPIC_API_KEY: "",
+      AI_INTAKE_ENABLED: "",
+    });
+    expect(env.DIRECT_URL).toBeUndefined();
+    expect(env.COINGECKO_API_KEY).toBeUndefined();
+    expect(env.AI_INTAKE_ENABLED).toBe(false);
+  });
+
+  it("still requires the required ones when blank", () => {
+    expect(() => parseServerEnv({ ...valid, DATABASE_URL: "" })).toThrow(/DATABASE_URL/);
+  });
+
   it("reads AI_INTAKE_ENABLED=true", () => {
     expect(parseServerEnv({ ...valid, AI_INTAKE_ENABLED: "true" }).AI_INTAKE_ENABLED).toBe(true);
   });
