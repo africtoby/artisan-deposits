@@ -1,0 +1,119 @@
+// Money rules: sats are BigInt, fiat is BigInt in the smallest unit (kobo, cents). Never Float.
+// Row Level Security is switched on in the migration SQL (Prisma cannot express it).
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum JobStatus {
+  created
+  deposit_pending
+  deposit_paid
+  in_progress
+  ready
+  balance_pending
+  completed
+  cancelled
+}
+
+enum InvoicePurpose {
+  deposit
+  balance
+}
+
+enum InvoiceStatus {
+  pending
+  paid
+  expired
+}
+
+enum EventActor {
+  seller
+  system
+  client
+}
+
+model SellerProfile {
+  id                 String    @id @default(uuid(7)) @db.Uuid
+  // The Supabase Auth user id. Auth lives in another schema, so this is not a foreign key.
+  userId             String    @unique @map("user_id") @db.Uuid
+  displayName        String    @map("display_name")
+  defaultCurrency    String    @default("NGN") @map("default_currency")
+  // AES-256-GCM output from secret-box.ts. The plain wallet link is never stored.
+  nwcSecretEncrypted String?   @map("nwc_secret_encrypted")
+  nwcConnectedAt     DateTime? @map("nwc_connected_at") @db.Timestamptz(6)
+  createdAt          DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  jobs               Job[]
+
+  @@map("seller_profiles")
+}
+
+model Job {
+  id           String    @id @default(uuid(7)) @db.Uuid
+  sellerId     String    @map("seller_id") @db.Uuid
+  clientName   String    @map("client_name")
+  title        String
+  details      Json      @default("{}")
+  deadline     DateTime? @db.Date
+  currency     String
+  priceMinor   BigInt    @map("price_minor")
+  depositMinor BigInt    @map("deposit_minor")
+  status       JobStatus @default(created)
+  // https only, shown to the client once the job is completed (validated in delivery-url.ts).
+  deliveryUrl  String?   @map("delivery_url")
+  // 32 random bytes, base64url. This is the only thing protecting the client page.
+  publicToken  String    @unique @map("public_token")
+  createdAt    DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt    DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  seller   SellerProfile @relation(fields: [sellerId], references: [id], onDelete: Cascade)
+  invoices Invoice[]
+  events   JobEvent[]
+
+  @@index([sellerId, createdAt(sort: Desc)])
+  @@map("jobs")
+}
+
+model Invoice {
+  id          String         @id @default(uuid(7)) @db.Uuid
+  jobId       String         @map("job_id") @db.Uuid
+  purpose     InvoicePurpose
+  bolt11      String
+  // Unique so the same payment can never be recorded twice.
+  paymentHash String         @unique @map("payment_hash")
+  amountSats  BigInt         @map("amount_sats")
+  fiatMinor   BigInt         @map("fiat_minor")
+  currency    String
+  // Fiat (whole units) per 1 BTC at creation. Locked for the invoice's life; Decimal, never Float.
+  rateUsed    Decimal        @map("rate_used") @db.Decimal(24, 8)
+  expiresAt   DateTime       @map("expires_at") @db.Timestamptz(6)
+  status      InvoiceStatus  @default(pending)
+  paidAt      DateTime?      @map("paid_at") @db.Timestamptz(6)
+  createdAt   DateTime       @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  job Job @relation(fields: [jobId], references: [id], onDelete: Cascade)
+
+  @@index([jobId, purpose])
+  @@map("invoices")
+}
+
+// Audit log and client timeline in one table.
+model JobEvent {
+  id         String     @id @default(uuid(7)) @db.Uuid
+  jobId      String     @map("job_id") @db.Uuid
+  fromStatus JobStatus? @map("from_status")
+  toStatus   JobStatus  @map("to_status")
+  actor      EventActor
+  note       String?
+  createdAt  DateTime   @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  job Job @relation(fields: [jobId], references: [id], onDelete: Cascade)
+
+  @@index([jobId, createdAt])
+  @@map("job_events")
+}
