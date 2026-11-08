@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { CircleAlert } from "lucide-react";
+import Link from "next/link";
 import { Suspense } from "react";
 import { Wordmark } from "@/components/wordmark";
 import { SignInForm } from "./sign-in-form";
@@ -22,6 +23,13 @@ export default function SignInPage({ searchParams }: PageProps<"/sign-in">) {
           <LinkProblem searchParams={searchParams} />
         </Suspense>
         <SignInForm />
+        <p className="text-small text-ink-soft mt-6">
+          Just looking?{" "}
+          <Link href="/demo" className="underline">
+            Try the demo
+          </Link>{" "}
+          with practice coins.
+        </p>
       </div>
     </main>
   );

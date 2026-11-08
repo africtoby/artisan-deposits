@@ -1,12 +1,14 @@
 "use server";
 
 import { redirect } from "next/navigation";
+import { getDb } from "@/lib/db";
 import { requireUser } from "@/lib/auth/current-user";
 import { createJob } from "@/lib/jobs/create-job";
 import { parseJobInput, type JobInputField } from "@/lib/jobs/job-input";
 import { PrismaJobStore } from "@/lib/jobs/prisma-job-store";
 import { rateLimit } from "@/lib/rate-limit";
-import { ensureSellerProfile, getWalletStatus } from "@/lib/sellers/seller-profile";
+import { DEMO_MAX_JOBS } from "@/lib/demo/limits";
+import { ensureSellerProfile, getWalletStatus, isDemoSeller } from "@/lib/sellers/seller-profile";
 
 export type CreateJobState =
   | { status: "idle" }
@@ -37,6 +39,16 @@ export async function createJobAction(
   if (!parsed.ok) return { status: "error", fields: parsed.errors };
 
   const profile = await ensureSellerProfile(user);
+  if (await isDemoSeller(user.id)) {
+    const count = await getDb().job.count({ where: { sellerId: profile.id } });
+    if (count >= DEMO_MAX_JOBS) {
+      return {
+        status: "error",
+        fields: {},
+        message: `The demo allows ${DEMO_MAX_JOBS} jobs. Use one of the ones you have.`,
+      };
+    }
+  }
   const job = await createJob(PrismaJobStore.create(), profile.id, parsed.value);
   redirect(`/jobs/${job.id}`);
 }

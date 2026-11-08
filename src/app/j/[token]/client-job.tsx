@@ -6,10 +6,12 @@ import { AmountDisplay } from "@/components/amount-display";
 import { PaymentSlip } from "@/components/payment-slip";
 import { Tag } from "@/components/tag";
 import { Tape } from "@/components/tape";
-import { buttonClasses } from "@/components/button";
+import { Button, buttonClasses } from "@/components/button";
+import { TestCoinsBanner } from "@/components/test-coins-banner";
 import type { ClientJobState } from "@/lib/jobs/client-job";
 import { tapeProgress } from "@/lib/jobs/tape-stages";
 import { formatMinor, isCurrencyCode } from "@/lib/money/currencies";
+import { practicePayAction } from "./practice-pay-action";
 
 const PAY_POLL_MS = 4000;
 const WAIT_POLL_MS = 10_000;
@@ -31,6 +33,7 @@ type ClientJobProps = {
   priceMinor: string;
   depositMinor: string;
   initial: ClientJobState;
+  demo: boolean;
 };
 
 const STATUS_TEXT: Record<string, string> = {
@@ -46,6 +49,7 @@ export function ClientJob(props: ClientJobProps) {
   const [state, setState] = useState<ClientJobState>(initial);
   const [stale, setStale] = useState(false);
   const [justPaid, setJustPaid] = useState(false);
+  const [practicing, setPracticing] = useState(false);
   const inFlight = useRef(false);
   const wasOpen = useRef(initial.payment.kind === "open");
 
@@ -70,6 +74,16 @@ export function ClientJob(props: ClientJobProps) {
       inFlight.current = false;
     }
   }, [token]);
+
+  async function payWithPracticeCoins() {
+    setPracticing(true);
+    try {
+      await practicePayAction(token);
+      await refresh();
+    } finally {
+      setPracticing(false);
+    }
+  }
 
   const finished = state.status === "completed" || state.status === "cancelled";
   const paying = state.payment.kind === "open";
@@ -107,6 +121,14 @@ export function ClientJob(props: ClientJobProps) {
               sats={BigInt(payment.amountSats)}
             />
             <PaymentSlip bolt11={payment.bolt11} state="open" />
+            {props.demo && (
+              <div className="flex flex-col gap-3">
+                <TestCoinsBanner />
+                <Button fullWidth loading={practicing} onClick={() => void payWithPracticeCoins()}>
+                  Pay with practice coins
+                </Button>
+              </div>
+            )}
             <p role="status" className="text-small text-ink-soft">
               {stale
                 ? "Can't check for payment right now. Trying again."

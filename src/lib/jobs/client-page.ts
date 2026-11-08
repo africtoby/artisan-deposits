@@ -1,7 +1,7 @@
 import "server-only";
 import { getRate } from "@/lib/rates/get-rate";
 import { rateLimit } from "@/lib/rate-limit";
-import { openWalletForProfile } from "@/lib/sellers/seller-profile";
+import { isDemoProfile, openWalletForProfile } from "@/lib/sellers/seller-profile";
 import { loadClientJobState, type ClientJobState } from "./client-job";
 import { PrismaJobStore } from "./prisma-job-store";
 import { isWellFormedToken } from "./public-token";
@@ -13,6 +13,8 @@ export type ClientJobView = {
   priceMinor: string;
   depositMinor: string;
   state: ClientJobState;
+  // True for judge-mode jobs, which get the "Pay with practice coins" button.
+  demo: boolean;
 };
 
 export type ClientJobResult =
@@ -43,6 +45,7 @@ export async function loadClientJob(token: string): Promise<ClientJobResult> {
         priceMinor: job.priceMinor.toString(),
         depositMinor: job.depositMinor.toString(),
         state,
+        demo: await isDemoProfile(job.sellerId),
       },
     };
   } catch (error) {
