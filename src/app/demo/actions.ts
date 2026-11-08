@@ -3,6 +3,7 @@
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth/current-user";
+import { clientIpFrom } from "@/lib/client-ip";
 import { getDb } from "@/lib/db";
 import { deleteExpiredDemoSellers } from "@/lib/demo/demo-cleanup";
 import { DEMO_STARTS_PER_IP } from "@/lib/demo/limits";
@@ -19,8 +20,7 @@ export async function startDemoAction(): Promise<StartDemoState> {
   // Someone already signed in keeps their session: replacing it would log a real seller out.
   if (await getCurrentUser()) redirect("/jobs");
 
-  const forwarded = (await headers()).get("x-forwarded-for");
-  const ip = forwarded?.split(",")[0]?.trim() || "unknown";
+  const ip = clientIpFrom(await headers());
   const limit = rateLimit(`demo-start:${ip}`, DEMO_STARTS_PER_IP, TEN_MINUTES);
   if (!limit.allowed) {
     const minutes = Math.max(1, Math.ceil(limit.retryAfterSeconds / 60));

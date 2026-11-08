@@ -2,6 +2,7 @@
 
 import { headers } from "next/headers";
 import { z } from "zod";
+import { clientIpFrom } from "@/lib/client-ip";
 import { getPublicEnv } from "@/lib/env";
 import { rateLimit } from "@/lib/rate-limit";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
@@ -24,8 +25,7 @@ export async function signInAction(
   const email = parsed.data;
 
   // Two limits: per address (stops someone flooding one inbox) and per network address.
-  const forwarded = (await headers()).get("x-forwarded-for");
-  const ip = forwarded?.split(",")[0]?.trim() || "unknown";
+  const ip = clientIpFrom(await headers());
   const byEmail = rateLimit(`sign-in-email:${email}`, 3, FIFTEEN_MINUTES);
   const byIp = rateLimit(`sign-in-ip:${ip}`, 20, FIFTEEN_MINUTES);
   const blocked = !byEmail.allowed ? byEmail : !byIp.allowed ? byIp : null;

@@ -1,7 +1,9 @@
 import type { Metadata } from "next";
+import { headers } from "next/headers";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
 import { Wordmark } from "@/components/wordmark";
+import { clientIpFrom } from "@/lib/client-ip";
 import { loadClientJob } from "@/lib/jobs/client-page";
 import { ClientJob } from "./client-job";
 
@@ -22,7 +24,7 @@ export default function ClientJobPage({ params }: PageProps<"/j/[token]">) {
 
 async function ClientJobContent({ params }: { params: PageProps<"/j/[token]">["params"] }) {
   const { token } = await params;
-  const result = await loadClientJob(token);
+  const result = await loadClientJob(token, clientIpFrom(await headers()));
   if (!result.ok && result.reason === "not-found") notFound();
 
   return (

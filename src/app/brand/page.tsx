@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { notFound } from "next/navigation";
 import { connection } from "next/server";
 import { Suspense, type ReactNode } from "react";
 import { AmountDisplay } from "@/components/amount-display";
@@ -16,8 +17,7 @@ import { tapeProgress } from "@/lib/jobs/tape-stages";
 
 export const metadata: Metadata = {
   title: "Brand",
-  // This page is for checking the design. It is not linked anywhere and must be removed or
-  // protected before launch (Phase 8 security checklist).
+  // This page is for checking the design. It is not linked anywhere and returns 404 in production.
   robots: { index: false, follow: false },
 };
 
@@ -43,6 +43,8 @@ function Sample({ label, children }: { label: string; children: ReactNode }) {
 }
 
 export default function BrandPage() {
+  // Design check page only: a 404 on the live site so strangers cannot browse it.
+  if (process.env.NODE_ENV === "production") notFound();
   return (
     <main className="mx-auto flex w-full max-w-[480px] flex-col gap-8 px-4 py-8">
       <header className="flex flex-col gap-2">
