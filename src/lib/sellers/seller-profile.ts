@@ -2,6 +2,8 @@ import "server-only";
 import { getDb } from "@/lib/db";
 import { decryptSecret, encryptSecret, keyFromBase64 } from "@/lib/crypto/secret-box";
 import { getServerEnv } from "@/lib/env";
+import { DemoWalletProvider } from "@/lib/demo/demo-wallet";
+import { PrismaDemoWalletStore } from "@/lib/demo/prisma-demo-wallet-store";
 import { NwcWalletProvider } from "@/lib/wallet/nwc-wallet-provider";
 import type { WalletProvider } from "@/lib/wallet/wallet-provider";
 import type { CurrentUser } from "@/lib/auth/current-user";
@@ -23,8 +25,11 @@ export async function ensureSellerProfile(user: CurrentUser): Promise<{ id: stri
 export async function getWalletStatus(userId: string): Promise<WalletStatus> {
   const profile = await getDb().sellerProfile.findUnique({
     where: { userId },
-    select: { nwcSecretEncrypted: true, nwcConnectedAt: true },
+    select: { nwcSecretEncrypted: true, nwcConnectedAt: true, isDemo: true },
   });
+  // A demo seller always has the practice wallet, so the "connect a wallet" step never blocks them.
+  if (profile?.isDemo)
+    return { connected: true, connectedAt: profile.nwcConnectedAt ?? new Date(0) };
   if (!profile?.nwcSecretEncrypted || !profile.nwcConnectedAt) return { connected: false };
   return { connected: true, connectedAt: profile.nwcConnectedAt };
 }
@@ -39,6 +44,22 @@ export async function saveWalletLink(user: CurrentUser, link: string): Promise<v
   });
 }
 
+export async function isDemoSeller(userId: string): Promise<boolean> {
+  const profile = await getDb().sellerProfile.findUnique({
+    where: { userId },
+    select: { isDemo: true },
+  });
+  return profile?.isDemo ?? false;
+}
+
+export async function isDemoProfile(profileId: string): Promise<boolean> {
+  const profile = await getDb().sellerProfile.findUnique({
+    where: { id: profileId },
+    select: { isDemo: true },
+  });
+  return profile?.isDemo ?? false;
+}
+
 export async function removeWalletLink(userId: string): Promise<void> {
   await getDb().sellerProfile.updateMany({
     where: { userId },
@@ -50,8 +71,9 @@ export async function removeWalletLink(userId: string): Promise<void> {
 export async function openWalletForSeller(userId: string): Promise<WalletProvider | null> {
   const profile = await getDb().sellerProfile.findUnique({
     where: { userId },
-    select: { nwcSecretEncrypted: true },
+    select: { id: true, nwcSecretEncrypted: true, isDemo: true },
   });
+  if (profile?.isDemo) return new DemoWalletProvider(new PrismaDemoWalletStore(profile.id));
   if (!profile?.nwcSecretEncrypted) return null;
   const key = keyFromBase64(getServerEnv().APP_ENCRYPTION_KEY);
   return new NwcWalletProvider(decryptSecret(profile.nwcSecretEncrypted, key, userId));

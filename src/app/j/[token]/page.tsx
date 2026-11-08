@@ -36,6 +36,7 @@ async function ClientJobContent({ params }: { params: PageProps<"/j/[token]">["p
           priceMinor={result.view.priceMinor}
           depositMinor={result.view.depositMinor}
           initial={result.view.state}
+          demo={result.view.demo}
         />
       ) : (
         <div className="flex flex-col gap-3 px-4 py-8">

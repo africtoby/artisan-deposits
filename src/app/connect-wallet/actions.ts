@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { requireUser } from "@/lib/auth/current-user";
 import { rateLimit } from "@/lib/rate-limit";
-import { removeWalletLink, saveWalletLink } from "@/lib/sellers/seller-profile";
+import { isDemoSeller, removeWalletLink, saveWalletLink } from "@/lib/sellers/seller-profile";
 import { checkWalletConnection, nwcLinkSchema } from "@/lib/wallet/connect-wallet";
 import { NwcWalletProvider } from "@/lib/wallet/nwc-wallet-provider";
 import { isTestNetwork, WalletError } from "@/lib/wallet/wallet-provider";
@@ -20,6 +20,13 @@ export async function connectWalletAction(
   formData: FormData,
 ): Promise<ConnectState> {
   const user = await requireUser();
+  // The demo seller already has a practice wallet; a real link must never be attached to it.
+  if (await isDemoSeller(user.id)) {
+    return {
+      status: "error",
+      message: "The demo uses practice coins. Sign in to connect a wallet.",
+    };
+  }
 
   const limit = rateLimit(`connect-wallet:${user.id}`, 5, TEN_MINUTES);
   if (!limit.allowed) {

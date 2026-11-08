@@ -39,16 +39,19 @@ enum EventActor {
 }
 
 model SellerProfile {
-  id                 String    @id @default(uuid(7)) @db.Uuid
+  id                 String              @id @default(uuid(7)) @db.Uuid
   // The Supabase Auth user id. Auth lives in another schema, so this is not a foreign key.
-  userId             String    @unique @map("user_id") @db.Uuid
-  displayName        String    @map("display_name")
-  defaultCurrency    String    @default("NGN") @map("default_currency")
+  userId             String              @unique @map("user_id") @db.Uuid
+  displayName        String              @map("display_name")
+  defaultCurrency    String              @default("NGN") @map("default_currency")
   // AES-256-GCM output from secret-box.ts. The plain wallet link is never stored.
-  nwcSecretEncrypted String?   @map("nwc_secret_encrypted")
-  nwcConnectedAt     DateTime? @map("nwc_connected_at") @db.Timestamptz(6)
-  createdAt          DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  nwcSecretEncrypted String?             @map("nwc_secret_encrypted")
+  nwcConnectedAt     DateTime?           @map("nwc_connected_at") @db.Timestamptz(6)
+  // Judge-mode seller from /demo. Uses the practice wallet and is deleted after a day.
+  isDemo             Boolean             @default(false) @map("is_demo")
+  createdAt          DateTime            @default(now()) @map("created_at") @db.Timestamptz(6)
   jobs               Job[]
+  demoInvoices       DemoWalletInvoice[]
 
   @@map("seller_profiles")
 }
@@ -116,4 +119,21 @@ model JobEvent {
 
   @@index([jobId, createdAt])
   @@map("job_events")
+}
+
+// The practice wallet's memory (judge mode only). It lives in the database, not in RAM, because
+// serverless hosting runs several instances that do not share memory. No real money is involved.
+model DemoWalletInvoice {
+  paymentHash String    @id @map("payment_hash")
+  sellerId    String    @map("seller_id") @db.Uuid
+  amountSats  BigInt    @map("amount_sats")
+  description String
+  expiresAt   DateTime  @map("expires_at") @db.Timestamptz(6)
+  settledAt   DateTime? @map("settled_at") @db.Timestamptz(6)
+  createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  seller SellerProfile @relation(fields: [sellerId], references: [id], onDelete: Cascade)
+
+  @@index([sellerId, createdAt(sort: Desc)])
+  @@map("demo_wallet_invoices")
 }
