@@ -4,6 +4,7 @@ import type { RateLookup } from "@/lib/rates/rate-provider";
 import type { CurrencyCode } from "@/lib/money/currencies";
 import type { WalletProvider } from "@/lib/wallet/wallet-provider";
 import type { InvoiceRecord, JobStore } from "./job-store";
+import { assertMove } from "./status-machine";
 
 export const INVOICE_LIFETIME_SECONDS = 15 * 60;
 
@@ -86,7 +87,13 @@ export async function createInvoice(
       expiresAt: new Date(Math.min(ourExpiry, made.expiresAt.getTime())),
     });
     if (purpose === "deposit" && job.status === "created") {
+      assertMove("created", "deposit_pending", false);
       await tx.moveJob(job.id, "created", "deposit_pending", "system", "Deposit invoice created");
+    }
+    // Asking for the balance is what moves a finished job into "balance_pending".
+    if (purpose === "balance" && job.status === "ready") {
+      assertMove("ready", "balance_pending", false);
+      await tx.moveJob(job.id, "ready", "balance_pending", "seller", "Balance requested");
     }
     return saved;
   });

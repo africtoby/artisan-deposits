@@ -46,7 +46,14 @@ describe("createJob", () => {
     expect(job.status).toBe("created");
     expect(isWellFormedToken(job.publicToken)).toBe(true);
     expect(store.events).toEqual([
-      { jobId: job.id, from: null, to: "created", actor: "seller", note: null },
+      {
+        jobId: job.id,
+        at: expect.any(Date),
+        from: null,
+        to: "created",
+        actor: "seller",
+        note: null,
+      },
     ]);
   });
 });

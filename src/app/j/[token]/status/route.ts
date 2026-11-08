@@ -5,7 +5,7 @@ export async function POST(_request: Request, ctx: RouteContext<"/j/[token]/stat
   const { token } = await ctx.params;
   const result = await loadClientJob(token);
   if (result.ok)
-    return Response.json(result.view.deposit, { headers: { "Cache-Control": "no-store" } });
+    return Response.json(result.view.state, { headers: { "Cache-Control": "no-store" } });
   const status = result.reason === "not-found" ? 404 : result.reason === "busy" ? 429 : 503;
   return Response.json(
     { error: result.reason },

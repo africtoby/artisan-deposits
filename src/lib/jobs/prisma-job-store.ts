@@ -4,7 +4,14 @@ import type { Prisma, PrismaClient } from "@/generated/prisma/client";
 import type { EventActor, InvoicePurpose, JobStatus } from "@/generated/prisma/enums";
 import { getDb } from "@/lib/db";
 import { isCurrencyCode, type CurrencyCode } from "@/lib/money/currencies";
-import type { InvoiceRecord, JobRecord, JobStore, NewInvoice, NewJob } from "./job-store";
+import type {
+  EventRecord,
+  InvoiceRecord,
+  JobRecord,
+  JobStore,
+  NewInvoice,
+  NewJob,
+} from "./job-store";
 
 type Client = PrismaClient | Prisma.TransactionClient;
 
@@ -25,6 +32,7 @@ function toJob(row: Job): JobRecord {
     depositMinor: row.depositMinor,
     status: row.status,
     publicToken: row.publicToken,
+    deliveryUrl: row.deliveryUrl,
   };
 }
 
@@ -88,6 +96,18 @@ export class PrismaJobStore implements JobStore {
   async findJobByToken(token: string): Promise<JobRecord | null> {
     const row = await this.client.job.findUnique({ where: { publicToken: token } });
     return row ? toJob(row) : null;
+  }
+
+  async listEvents(jobId: string): Promise<EventRecord[]> {
+    return this.client.jobEvent.findMany({
+      where: { jobId },
+      orderBy: { createdAt: "asc" },
+      select: { fromStatus: true, toStatus: true, actor: true, createdAt: true },
+    });
+  }
+
+  async setDeliveryUrl(jobId: string, url: string): Promise<void> {
+    await this.client.job.update({ where: { id: jobId }, data: { deliveryUrl: url } });
   }
 
   async findInvoiceByPaymentHash(paymentHash: string): Promise<InvoiceRecord | null> {

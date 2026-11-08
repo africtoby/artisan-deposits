@@ -3,11 +3,11 @@ import { notFound } from "next/navigation";
 import { Suspense } from "react";
 import { Wordmark } from "@/components/wordmark";
 import { loadClientJob } from "@/lib/jobs/client-page";
-import { DepositPayment } from "./deposit-payment";
+import { ClientJob } from "./client-job";
 
 // The link is private: keep it out of search results and out of the Referer header.
 export const metadata: Metadata = {
-  title: "Pay your deposit",
+  title: "Your job",
   robots: { index: false, follow: false },
   referrer: "no-referrer",
 };
@@ -28,14 +28,14 @@ async function ClientJobContent({ params }: { params: PageProps<"/j/[token]">["p
   return (
     <main className="mx-auto flex w-full max-w-[480px] flex-col gap-6 pb-12">
       {result.ok ? (
-        <DepositPayment
+        <ClientJob
           token={token}
           title={result.view.title}
           clientName={result.view.clientName}
           currency={result.view.currency}
           priceMinor={result.view.priceMinor}
           depositMinor={result.view.depositMinor}
-          initial={result.view.deposit}
+          initial={result.view.state}
         />
       ) : (
         <div className="flex flex-col gap-3 px-4 py-8">

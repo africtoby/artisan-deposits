@@ -2,7 +2,7 @@ import "server-only";
 import { getRate } from "@/lib/rates/get-rate";
 import { rateLimit } from "@/lib/rate-limit";
 import { openWalletForProfile } from "@/lib/sellers/seller-profile";
-import { refreshDeposit, type ClientDepositState } from "./client-deposit";
+import { loadClientJobState, type ClientJobState } from "./client-job";
 import { PrismaJobStore } from "./prisma-job-store";
 import { isWellFormedToken } from "./public-token";
 
@@ -12,7 +12,7 @@ export type ClientJobView = {
   currency: string;
   priceMinor: string;
   depositMinor: string;
-  deposit: ClientDepositState;
+  state: ClientJobState;
 };
 
 export type ClientJobResult =
@@ -32,7 +32,8 @@ export async function loadClientJob(token: string): Promise<ClientJobResult> {
   const wallet = await openWalletForProfile(job.sellerId);
   if (!wallet) return { ok: false, reason: "unavailable" };
   try {
-    const deposit = await refreshDeposit({ store, wallet, getRate }, job.id);
+    const state = await loadClientJobState({ store, wallet, getRate }, job.id);
+    if (!state) return { ok: false, reason: "not-found" };
     return {
       ok: true,
       view: {
@@ -41,13 +42,13 @@ export async function loadClientJob(token: string): Promise<ClientJobResult> {
         currency: job.currency,
         priceMinor: job.priceMinor.toString(),
         depositMinor: job.depositMinor.toString(),
-        deposit,
+        state,
       },
     };
   } catch (error) {
     // Wallet offline or both rate sources down. Logged without the wallet link: WalletError
     // messages never carry it. The client sees a calm "try again", not a stack trace.
-    console.error("client deposit refresh failed:", error instanceof Error ? error.name : error);
+    console.error("client job refresh failed:", error instanceof Error ? error.name : error);
     return { ok: false, reason: "unavailable" };
   } finally {
     wallet.close();

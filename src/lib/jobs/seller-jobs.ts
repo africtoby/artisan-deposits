@@ -12,6 +12,7 @@ export type SellerJobSummary = {
   depositMinor: bigint;
   status: JobStatus;
   publicToken: string;
+  deliveryUrl: string | null;
 };
 
 const select = {
@@ -23,6 +24,7 @@ const select = {
   depositMinor: true,
   status: true,
   publicToken: true,
+  deliveryUrl: true,
 } as const;
 
 function toSummary(row: {
@@ -34,6 +36,7 @@ function toSummary(row: {
   depositMinor: bigint;
   status: JobStatus;
   publicToken: string;
+  deliveryUrl: string | null;
 }): SellerJobSummary {
   if (!isCurrencyCode(row.currency))
     throw new Error(`Unknown currency in database: ${row.currency}`);
