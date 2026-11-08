@@ -20,16 +20,23 @@ export type ClientJobView = {
 export type ClientJobResult =
   { ok: true; view: ClientJobView } | { ok: false; reason: "not-found" | "busy" | "unavailable" };
 
-// The token is the client's only key, so a wrong guess looks exactly like a missing page and a
-// flood of guesses from one token's address is slowed down.
-export async function loadClientJob(token: string): Promise<ClientJobResult> {
-  if (!isWellFormedToken(token)) return { ok: false, reason: "not-found" };
+const MISSES_PER_IP = 30;
+
+// The token is the client's only key, so a wrong guess looks exactly like a missing page. Two
+// limits slow guessing: one per token, and one per visitor address that counts only misses, so
+// trying many different tokens from one place gets cut off while normal clients are untouched.
+export async function loadClientJob(token: string, ip: string): Promise<ClientJobResult> {
+  const missLimit = () => rateLimit(`client-job-miss:${ip}`, MISSES_PER_IP, 60_000);
+  const missed = (): ClientJobResult =>
+    missLimit().allowed ? { ok: false, reason: "not-found" } : { ok: false, reason: "busy" };
+
+  if (!isWellFormedToken(token)) return missed();
   const limit = rateLimit(`client-job:${token}`, 60, 60_000);
   if (!limit.allowed) return { ok: false, reason: "busy" };
 
   const store = PrismaJobStore.create();
   const job = await store.findJobByToken(token);
-  if (!job) return { ok: false, reason: "not-found" };
+  if (!job) return missed();
 
   const wallet = await openWalletForProfile(job.sellerId);
   if (!wallet) return { ok: false, reason: "unavailable" };
