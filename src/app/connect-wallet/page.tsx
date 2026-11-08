@@ -23,7 +23,7 @@ const CAN = [
 ];
 
 const CANNOT = [
-  "Spend or send your money. The link we accept cannot do it",
+  "Spend or send your money. The app has no way to pay out, and real-money links that can spend are refused",
   "Hold your money. Payments go straight into your wallet",
   "Show your wallet link to anyone. It is stored encrypted",
 ];

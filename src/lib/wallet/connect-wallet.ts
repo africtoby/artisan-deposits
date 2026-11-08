@@ -1,6 +1,7 @@
 import { z } from "zod";
 import {
   WalletError,
+  isTestNetwork,
   missingMethodsIn,
   spendingMethodsIn,
   type WalletInfo,
@@ -47,7 +48,9 @@ export async function checkWalletConnection(provider: WalletProvider): Promise<C
     return { ok: false, reason: "unreachable", message };
   }
 
-  if (spendingMethodsIn(info.methods).length > 0) {
+  // Test-coin wallets (for example the Alby faucet) cannot make receive-only links, so on a
+  // confirmed test network a spending link is allowed. Real money never gets this exception.
+  if (spendingMethodsIn(info.methods).length > 0 && !isTestNetwork(info.network)) {
     return {
       ok: false,
       reason: "spending",

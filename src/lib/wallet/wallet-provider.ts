@@ -59,8 +59,12 @@ export class WalletError extends Error {
   }
 }
 
+const TEST_NETWORKS = new Set(["testnet", "signet", "regtest"]);
+
+// An allowlist, not "anything but mainnet": a wallet that reports an odd name must never be
+// treated as test coins, because that label also unlocks the spending-link exception.
 export function isTestNetwork(network: string): boolean {
-  return network.toLowerCase() !== "mainnet";
+  return TEST_NETWORKS.has(network.toLowerCase());
 }
 
 // Methods that move money out of the wallet. We refuse links that include any of them.
