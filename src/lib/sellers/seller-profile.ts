@@ -56,3 +56,13 @@ export async function openWalletForSeller(userId: string): Promise<WalletProvide
   const key = keyFromBase64(getServerEnv().APP_ENCRYPTION_KEY);
   return new NwcWalletProvider(decryptSecret(profile.nwcSecretEncrypted, key, userId));
 }
+
+// For the client page, where there is no signed-in user: the job knows its seller's profile id,
+// and the profile knows the user id that the wallet link was encrypted for.
+export async function openWalletForProfile(profileId: string): Promise<WalletProvider | null> {
+  const profile = await getDb().sellerProfile.findUnique({
+    where: { id: profileId },
+    select: { userId: true },
+  });
+  return profile ? openWalletForSeller(profile.userId) : null;
+}
