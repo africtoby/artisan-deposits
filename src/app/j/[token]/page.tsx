@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { headers } from "next/headers";
 import { notFound } from "next/navigation";
+import { connection } from "next/server";
 import { Suspense } from "react";
 import { Wordmark } from "@/components/wordmark";
 import { clientIpFrom } from "@/lib/client-ip";
@@ -24,6 +25,8 @@ export default function ClientJobPage({ params }: PageProps<"/j/[token]">) {
 
 async function ClientJobContent({ params }: { params: PageProps<"/j/[token]">["params"] }) {
   const { token } = await params;
+  // The rate limiter reads the clock, so this must wait for a real request, never a prerender.
+  await connection();
   const result = await loadClientJob(token, clientIpFrom(await headers()));
   if (!result.ok && result.reason === "not-found") notFound();
 
