@@ -20,8 +20,8 @@ const receiveOnly = [
   "list_transactions",
 ];
 
-function providerWith(methods: string[]): WalletProvider {
-  return new FakeWalletProvider(0n, { alias: "Test", network: "regtest", methods });
+function providerWith(methods: string[], network = "regtest"): WalletProvider {
+  return new FakeWalletProvider(0n, { alias: "Test", network, methods });
 }
 
 describe("FakeWalletProvider", () => {
@@ -84,10 +84,30 @@ describe("checkWalletConnection", () => {
   });
 
   it.each(["pay_invoice", "multi_pay_invoice", "pay_keysend", "multi_pay_keysend"])(
-    "refuses a link that allows %s",
+    "refuses a link that allows %s on real money",
     async (method) => {
-      const result = await checkWalletConnection(providerWith([...receiveOnly, method]));
+      const result = await checkWalletConnection(providerWith([...receiveOnly, method], "mainnet"));
       expect(result).toMatchObject({ ok: false, reason: "spending" });
+    },
+  );
+
+  it.each(["bitcoin", "", "Mainnet", "unknown"])(
+    "refuses a spending link when the network is %j, because it is not a known test network",
+    async (network) => {
+      const result = await checkWalletConnection(
+        providerWith([...receiveOnly, "pay_invoice"], network),
+      );
+      expect(result).toMatchObject({ ok: false, reason: "spending" });
+    },
+  );
+
+  it.each(["testnet", "signet", "regtest"])(
+    "allows a spending link on the %s test network",
+    async (network) => {
+      const result = await checkWalletConnection(
+        providerWith([...receiveOnly, "pay_invoice"], network),
+      );
+      expect(result.ok).toBe(true);
     },
   );
 
