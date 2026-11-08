@@ -16,6 +16,14 @@ export type JobRecord = {
   depositMinor: bigint;
   status: JobStatus;
   publicToken: string;
+  deliveryUrl: string | null;
+};
+
+export type EventRecord = {
+  fromStatus: JobStatus | null;
+  toStatus: JobStatus;
+  actor: EventActor;
+  createdAt: Date;
 };
 
 export type InvoiceRecord = {
@@ -54,6 +62,9 @@ export interface JobStore {
   createJob(job: NewJob): Promise<JobRecord>;
   findJobById(id: string): Promise<JobRecord | null>;
   findJobByToken(token: string): Promise<JobRecord | null>;
+  // Oldest first, so it reads as a timeline.
+  listEvents(jobId: string): Promise<EventRecord[]>;
+  setDeliveryUrl(jobId: string, url: string): Promise<void>;
   findInvoiceByPaymentHash(paymentHash: string): Promise<InvoiceRecord | null>;
   // The newest invoice for this job and purpose that is still waiting for payment.
   findPendingInvoice(jobId: string, purpose: InvoicePurpose): Promise<InvoiceRecord | null>;

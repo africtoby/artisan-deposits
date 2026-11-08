@@ -1,9 +1,17 @@
 import { randomUUID } from "node:crypto";
 import type { EventActor, InvoicePurpose, JobStatus } from "@/generated/prisma/enums";
-import type { InvoiceRecord, JobRecord, JobStore, NewInvoice, NewJob } from "./job-store";
+import type {
+  EventRecord,
+  InvoiceRecord,
+  JobRecord,
+  JobStore,
+  NewInvoice,
+  NewJob,
+} from "./job-store";
 
 export type RecordedEvent = {
   jobId: string;
+  at?: Date;
   from: JobStatus | null;
   to: JobStatus;
   actor: EventActor;
@@ -28,9 +36,17 @@ export class MemoryJobStore implements JobStore {
       depositMinor: job.depositMinor,
       status: "created",
       publicToken: job.publicToken,
+      deliveryUrl: null,
     };
     this.jobs.set(record.id, record);
-    this.events.push({ jobId: record.id, from: null, to: "created", actor: "seller", note: null });
+    this.events.push({
+      jobId: record.id,
+      at: new Date(),
+      from: null,
+      to: "created",
+      actor: "seller",
+      note: null,
+    });
     return { ...record };
   }
 
@@ -42,6 +58,22 @@ export class MemoryJobStore implements JobStore {
   async findJobByToken(token: string): Promise<JobRecord | null> {
     for (const job of this.jobs.values()) if (job.publicToken === token) return { ...job };
     return null;
+  }
+
+  async listEvents(jobId: string): Promise<EventRecord[]> {
+    return this.events
+      .filter((event) => event.jobId === jobId)
+      .map((event) => ({
+        fromStatus: event.from,
+        toStatus: event.to,
+        actor: event.actor,
+        createdAt: event.at ?? new Date(0),
+      }));
+  }
+
+  async setDeliveryUrl(jobId: string, url: string): Promise<void> {
+    const job = this.jobs.get(jobId);
+    if (job) job.deliveryUrl = url;
   }
 
   async findInvoiceByPaymentHash(paymentHash: string): Promise<InvoiceRecord | null> {
@@ -101,7 +133,7 @@ export class MemoryJobStore implements JobStore {
     const job = this.jobs.get(jobId);
     if (!job || job.status !== from) return false;
     job.status = to;
-    this.events.push({ jobId, from, to, actor, note: note ?? null });
+    this.events.push({ jobId, at: new Date(), from, to, actor, note: note ?? null });
     return true;
   }
 

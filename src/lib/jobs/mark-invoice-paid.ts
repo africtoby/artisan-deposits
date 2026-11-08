@@ -1,5 +1,6 @@
 import type { JobStatus } from "@/generated/prisma/enums";
 import type { InvoiceRecord, JobStore } from "./job-store";
+import { assertMove } from "./status-machine";
 
 export type MarkPaidResult =
   | { changed: true; invoice: InvoiceRecord; jobMoved: boolean }
@@ -26,6 +27,8 @@ export async function markInvoicePaid(
     const invoice = await tx.claimInvoicePaid(paymentHash, paidAt);
     if (!invoice) return { changed: false };
     const step = AFTER_PAYMENT[invoice.purpose];
+    // A balance invoice only exists when something is owed, so the zero-balance rule is false.
+    assertMove(step.from, step.to, false);
     const jobMoved = await tx.moveJob(invoice.jobId, step.from, step.to, "system", step.note);
     return { changed: true, invoice, jobMoved };
   });
