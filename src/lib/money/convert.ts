@@ -28,6 +28,15 @@ export function fiatToSats(fiatMinor: bigint, currency: CurrencyCode, rateText: 
   return (numerator + denominator - 1n) / denominator;
 }
 
+// For showing a wallet balance in local money. Rounds to the nearest minor unit: this is a display
+// figure, never an amount anyone is charged.
+export function satsToFiatMinor(sats: bigint, currency: CurrencyCode, rateText: string): bigint {
+  if (sats < 0n) throw new Error("Amount cannot be negative.");
+  const numerator = sats * rateToScaled(rateText) * 10n ** BigInt(CURRENCIES[currency].decimals);
+  const denominator = SATS_PER_BTC * 10n ** BigInt(RATE_DECIMALS);
+  return (numerator * 2n + denominator) / (denominator * 2n);
+}
+
 // Turns what a person typed ("40000", "12.5") into the smallest unit. Rejects more decimals than
 // the currency has, rather than silently rounding someone's price.
 export function parseMajorToMinor(input: string, currency: CurrencyCode): bigint | null {

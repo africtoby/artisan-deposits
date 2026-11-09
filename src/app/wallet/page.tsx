@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { ArrowDownLeft, ArrowUpRight, ExternalLink } from "lucide-react";
+import { connection } from "next/server";
 import { Suspense } from "react";
 import { ButtonLink } from "@/components/button";
 import { EmptyState } from "@/components/empty-state";
@@ -9,8 +10,10 @@ import { WalletBalance } from "@/components/wallet-balance";
 import { Wordmark } from "@/components/wordmark";
 import { requireUser } from "@/lib/auth/current-user";
 import { CASH_OUT_PARTNERS } from "@/lib/cash-out-partners";
+import { satsToFiatMinor } from "@/lib/money/convert";
 import { formatSats } from "@/lib/money/currencies";
-import { openWalletForSeller } from "@/lib/sellers/seller-profile";
+import { getRate } from "@/lib/rates/get-rate";
+import { getDefaultCurrency, openWalletForSeller } from "@/lib/sellers/seller-profile";
 import { loadWalletOverview, type WalletOverview } from "@/lib/wallet/receive";
 import { isTestNetwork } from "@/lib/wallet/wallet-provider";
 import { ReceivePanel } from "./receive-panel";
@@ -34,6 +37,8 @@ export default function WalletPage() {
 }
 
 async function WalletContent() {
+  // The exchange rate cache reads the clock, so wait for a real request before anything else.
+  await connection();
   const user = await requireUser();
   const wallet = await openWalletForSeller(user.id);
 
@@ -49,10 +54,25 @@ async function WalletContent() {
     }
   }
 
+  // The balance and the receive form speak the seller's own currency. If no rate can be had, the
+  // page still works in sats instead of failing.
+  const currency = await getDefaultCurrency(user.id);
+  let rate: string | null = null;
+  if (overview) {
+    try {
+      rate = (await getRate(currency)).rate;
+    } catch {
+      rate = null;
+    }
+  }
+
   return (
     <main className="mx-auto flex w-full max-w-[480px] flex-col gap-8 px-4 py-8">
-      <Wordmark />
-      <h1 className="font-display text-h1 text-ink font-extrabold">Wallet</h1>
+      {overview && isTestNetwork(overview.info.network) && <TestCoinsBanner />}
+      <div className="flex flex-col gap-2">
+        <Wordmark />
+        <h1 className="text-body text-ink font-semibold">Wallet</h1>
+      </div>
 
       {!wallet && (
         <EmptyState
@@ -69,14 +89,23 @@ async function WalletContent() {
 
       {overview && (
         <>
-          {isTestNetwork(overview.info.network) && <TestCoinsBanner />}
-          <WalletBalance sats={overview.balanceSats} />
+          <WalletBalance
+            sats={overview.balanceSats}
+            fiat={
+              rate
+                ? {
+                    amountMinor: satsToFiatMinor(overview.balanceSats, currency, rate),
+                    currency,
+                  }
+                : undefined
+            }
+          />
 
           <section aria-labelledby="receive" className="flex flex-col gap-3">
             <h2 id="receive" className="font-display text-h2 text-ink font-extrabold">
               Receive
             </h2>
-            <ReceivePanel />
+            <ReceivePanel currency={currency} rate={rate} />
           </section>
 
           <section aria-labelledby="transactions" className="flex flex-col gap-3">
@@ -84,7 +113,7 @@ async function WalletContent() {
               Recent transactions
             </h2>
             {overview.transactions.length === 0 ? (
-              <p className="text-ink">No transactions yet.</p>
+              <EmptyState message="No payments yet. When a client pays a deposit, it shows here." />
             ) : (
               <ul className="border-dye-line border-t">
                 {overview.transactions.map((tx) => {
