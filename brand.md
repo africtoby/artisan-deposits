@@ -18,7 +18,7 @@ All colors live as CSS variables in `:root` in `src/app/globals.css`. Never hard
 | ink | #141B45 | text, strong lines, sign-in background | |
 | ink-soft | #4A5180 | secondary text, input borders | 6.6:1 on ground, 7.6:1 on surface |
 | indigo | #2A3A9C | primary buttons, links, focus ring | white on indigo 9.6:1 |
-| tape | #F2D77A | the tape component ONLY | ink on tape 11.6:1 |
+| tape | #F2D77A | the tape component and the brand mark ONLY | ink on tape 11.6:1 |
 | tape-tint | #FBEFC4 | the "Owed" tag background ONLY | ink on tape-tint 14.3:1 |
 | paid | #1B6B47 | paid state text and check | 6.5:1 on surface |
 | paid-tint | #DCEFE4 | paid tag background | 5.4:1 |
@@ -27,7 +27,7 @@ All colors live as CSS variables in `:root` in `src/app/globals.css`. Never hard
 | dye-line | #B8BFD9 | decorative dividers only | 1.6:1, so never the only edge of an input |
 
 Rules:
-- Yellow appears only on the tape and the Owed tag. Nowhere else.
+- Yellow appears only on the tape, the Owed tag and the brand mark beside the wordmark. Nowhere else.
 - No gradients. No dark mode (cut for the hackathon).
 - Use only the pairs in the table for text.
 
@@ -107,7 +107,7 @@ Build one `Tape` component.
 | Test coins | "Test coins. No real money moves." |
 | Link copied | "Link copied" |
 
-Wordmark: "Work Deposits" in the display font, 800, indigo on ground (white on ink on the sign-in screen). No logo symbol. Favicon: a tape-yellow square with three ink ticks.
+Wordmark: the brand mark, then "Work Deposits" in the display font, 800, indigo on ground (white on ink on the sign-in screen). The brand mark (`BrandMark`) is a tape-yellow square with three ink ticks, the same as the favicon, and is the only symbol. It is a small 24px mark, never used as decoration elsewhere.
 
 ## Components to build first (Phase 2 design foundation)
 Each with all its states (default, focus, disabled, loading, error where relevant):
