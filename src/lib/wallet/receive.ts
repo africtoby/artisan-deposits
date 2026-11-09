@@ -1,4 +1,6 @@
 import { z } from "zod";
+import { fiatToSats, parseMajorToMinor } from "@/lib/money/convert";
+import { CURRENCIES, type CurrencyCode } from "@/lib/money/currencies";
 import type {
   WalletInvoice,
   WalletProvider,
@@ -12,21 +14,44 @@ export const MAX_RECEIVE_SATS = 1_000_000n;
 const amountSchema = z
   .string()
   .trim()
-  .regex(/^\d{1,7}$/, "Enter the amount in sats, as a whole number.")
-  .transform((value) => BigInt(value))
-  .refine((value) => value >= 1n, "Enter at least 1 sat.")
-  .refine(
-    (value) => value <= MAX_RECEIVE_SATS,
-    `Enter ${MAX_RECEIVE_SATS.toLocaleString("en-US")} sats or fewer.`,
-  );
+  .min(1, "Enter an amount.")
+  .max(20, "Enter a smaller amount.");
 
-export type ReceiveAmount = { ok: true; sats: bigint } | { ok: false; message: string };
+export type ReceiveAmount =
+  { ok: true; sats: bigint; fiatMinor: bigint } | { ok: false; message: string };
 
-// The amount comes from a text box, so it is checked here and never trusted as a number.
-export function parseReceiveAmount(raw: unknown): ReceiveAmount {
-  const parsed = amountSchema.safeParse(typeof raw === "string" ? raw : "");
-  if (parsed.success) return { ok: true, sats: parsed.data };
-  return { ok: false, message: parsed.error.issues[0]?.message ?? "Enter an amount in sats." };
+// The amount comes from a text box in the seller's own currency. The sats are worked out here with
+// the server's rate, never taken from the browser, and a rate is passed in so this stays testable.
+export function receiveAmountFromFiat(
+  raw: unknown,
+  currency: CurrencyCode,
+  rateText: string,
+): ReceiveAmount {
+  const text = amountSchema.safeParse(typeof raw === "string" ? raw : "");
+  if (!text.success)
+    return { ok: false, message: text.error.issues[0]?.message ?? "Enter an amount." };
+
+  const fiatMinor = parseMajorToMinor(text.data, currency);
+  if (fiatMinor === null) {
+    const { decimals } = CURRENCIES[currency];
+    return {
+      ok: false,
+      message:
+        decimals === 0
+          ? `Enter the amount in ${currency} as a whole number.`
+          : `Enter the amount in ${currency}, like 5000 or 12.50. Use at most ${decimals} decimals.`,
+    };
+  }
+  if (fiatMinor === 0n) return { ok: false, message: "Enter an amount above zero." };
+
+  const sats = fiatToSats(fiatMinor, currency, rateText);
+  if (sats > MAX_RECEIVE_SATS) {
+    return {
+      ok: false,
+      message: `That is more than ${MAX_RECEIVE_SATS.toLocaleString("en-US")} sats. Enter a smaller amount.`,
+    };
+  }
+  return { ok: true, sats, fiatMinor };
 }
 
 export async function createReceiveInvoice(

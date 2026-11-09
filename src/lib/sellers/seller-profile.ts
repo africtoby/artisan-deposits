@@ -3,6 +3,7 @@ import { getDb } from "@/lib/db";
 import { decryptSecret, encryptSecret, keyFromBase64 } from "@/lib/crypto/secret-box";
 import { getServerEnv } from "@/lib/env";
 import { DemoWalletProvider } from "@/lib/demo/demo-wallet";
+import { isCurrencyCode, type CurrencyCode } from "@/lib/money/currencies";
 import { PrismaDemoWalletStore } from "@/lib/demo/prisma-demo-wallet-store";
 import { NwcWalletProvider } from "@/lib/wallet/nwc-wallet-provider";
 import type { WalletProvider } from "@/lib/wallet/wallet-provider";
@@ -50,6 +51,17 @@ export async function isDemoSeller(userId: string): Promise<boolean> {
     select: { isDemo: true },
   });
   return profile?.isDemo ?? false;
+}
+
+// The money the seller thinks in. Nothing lets them change it yet, so it is NGN unless the row
+// says otherwise; a value we do not know falls back to NGN rather than breaking the wallet page.
+export async function getDefaultCurrency(userId: string): Promise<CurrencyCode> {
+  const profile = await getDb().sellerProfile.findUnique({
+    where: { userId },
+    select: { defaultCurrency: true },
+  });
+  const value = profile?.defaultCurrency ?? "";
+  return isCurrencyCode(value) ? value : "NGN";
 }
 
 export async function isDemoProfile(profileId: string): Promise<boolean> {

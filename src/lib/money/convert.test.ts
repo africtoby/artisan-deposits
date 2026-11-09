@@ -1,5 +1,36 @@
 import { describe, expect, it } from "vitest";
-import { fiatToSats, parseMajorToMinor, rateToText } from "./convert";
+import { fiatToSats, parseMajorToMinor, rateToText, satsToFiatMinor } from "./convert";
+
+describe("satsToFiatMinor", () => {
+  it("is the reverse of fiatToSats at a round rate", () => {
+    // 1 NGN is exactly 1 sat at this rate.
+    expect(satsToFiatMinor(40_000n, "NGN", "100000000.00000000")).toBe(4_000_000n);
+  });
+
+  it("respects the number of decimals", () => {
+    expect(satsToFiatMinor(5000n, "XOF", "100000000")).toBe(5000n);
+    expect(satsToFiatMinor(10_000n, "USD", "100000.00000000")).toBe(1000n);
+  });
+
+  it("rounds to the nearest minor unit", () => {
+    // 1 sat is 0.004 NGN here: under half a kobo rounds down, half a kobo or more rounds up.
+    expect(satsToFiatMinor(1n, "NGN", "400000.00000000")).toBe(0n);
+    expect(satsToFiatMinor(125n, "NGN", "400000.00000000")).toBe(50n);
+    expect(satsToFiatMinor(1n, "NGN", "5000000.00000000")).toBe(5n);
+  });
+
+  it("handles zero and very large balances without losing digits", () => {
+    expect(satsToFiatMinor(0n, "NGN", "100000000")).toBe(0n);
+    expect(satsToFiatMinor(2_100_000_000_000_000n, "USD", "100000")).toBe(
+      2_100_000_000_000n * 100n,
+    );
+  });
+
+  it("rejects a negative balance and a bad rate", () => {
+    expect(() => satsToFiatMinor(-1n, "USD", "100000")).toThrow();
+    expect(() => satsToFiatMinor(1n, "USD", "0")).toThrow();
+  });
+});
 
 describe("fiatToSats", () => {
   it("converts naira at a round rate", () => {

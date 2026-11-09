@@ -1,20 +1,47 @@
 import { describe, expect, it } from "vitest";
 import { FakeWalletProvider } from "./fake-wallet-provider";
-import { createReceiveInvoice, loadWalletOverview, parseReceiveAmount } from "./receive";
+import { createReceiveInvoice, loadWalletOverview, receiveAmountFromFiat } from "./receive";
 import type { MakeInvoiceInput, WalletInvoice } from "./wallet-provider";
 
-describe("parseReceiveAmount", () => {
-  it("accepts whole sats", () => {
-    expect(parseReceiveAmount(" 2500 ")).toEqual({ ok: true, sats: 2500n });
+// 1 NGN is exactly 1 sat at this rate, which keeps the arithmetic easy to read.
+const RATE = "100000000.00000000";
+
+describe("receiveAmountFromFiat", () => {
+  it("turns an amount in the seller's currency into sats", () => {
+    expect(receiveAmountFromFiat(" 2,500 ", "NGN", RATE)).toEqual({
+      ok: true,
+      sats: 2500n,
+      fiatMinor: 250_000n,
+    });
   });
 
-  it.each(["", "0", "-5", "1.5", "1e3", "abc", "1000001", "12345678"])("rejects %j", (raw) => {
-    expect(parseReceiveAmount(raw).ok).toBe(false);
+  it("accepts decimals the currency has, and rounds sats up", () => {
+    expect(receiveAmountFromFiat("12.50", "USD", "100000")).toMatchObject({
+      ok: true,
+      fiatMinor: 1250n,
+      sats: 12_500n,
+    });
+  });
+
+  it.each(["", "   ", "0", "0.00", "-5", "1e3", "abc", "1.234", "99999999999999999999999"])(
+    "rejects %j for NGN",
+    (raw) => {
+      expect(receiveAmountFromFiat(raw, "NGN", RATE).ok).toBe(false);
+    },
+  );
+
+  it("rejects decimals for a currency without any", () => {
+    expect(receiveAmountFromFiat("10.5", "XOF", RATE)).toMatchObject({ ok: false });
+  });
+
+  it("rejects an amount over the sats limit", () => {
+    expect(receiveAmountFromFiat("1000000", "NGN", RATE)).toMatchObject({ ok: true });
+    expect(receiveAmountFromFiat("1000001", "NGN", RATE)).toMatchObject({ ok: false });
   });
 
   it("rejects a value that is not text", () => {
-    expect(parseReceiveAmount(null).ok).toBe(false);
-    expect(parseReceiveAmount(100).ok).toBe(false);
+    expect(receiveAmountFromFiat(null, "NGN", RATE).ok).toBe(false);
+    expect(receiveAmountFromFiat(100, "NGN", RATE).ok).toBe(false);
   });
 });
 
