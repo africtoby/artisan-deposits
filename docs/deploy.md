@@ -31,15 +31,34 @@ Add these in **Settings > Environment Variables** (Production). Names only here:
 | `AI_INTAKE_ENABLED`                    | `true` or `false`                                          |
 | `ANTHROPIC_API_KEY`                    | Only if `AI_INTAKE_ENABLED` is `true`                      |
 
-A new `APP_ENCRYPTION_KEY` means wallet links saved on your laptop cannot be opened on the live
-site. Connect the wallet again on the live site.
+## Making `APP_ENCRYPTION_KEY`
+
+Run this in PowerShell, copy the line it prints, and paste it only into Vercel. Do not save it in
+a file or send it to anyone:
+
+```
+node -e "console.log(require('crypto').randomBytes(32).toString('base64'))"
+```
+
+The live site uses the same Supabase project as your laptop. A new key means wallet links saved
+from your laptop cannot be opened on the live site, so connect the wallet again there. If you
+reuse the laptop key instead, those links keep working, but then one key protects both places.
 
 ## 4. After the first deploy
 
-1. In Supabase, open **Authentication > URL Configuration** and add the live address to the
+1. Copy the live address Vercel shows (for example `https://your-app.vercel.app`).
+2. In Vercel, set `NEXT_PUBLIC_APP_URL` to that address, then choose **Deployments > Redeploy**.
+   The address is baked in while the app builds, so a redeploy is required for it to count.
+3. In Supabase, open **Authentication > URL Configuration** and add the live address to the
    **Redirect URLs** (for example `https://your-app.vercel.app/**`). Sign-in emails need it.
-2. Set `NEXT_PUBLIC_APP_URL` to the final address and redeploy if it changed.
-3. On your phone, open the live address, then `/demo`, and finish the whole flow.
+4. On your phone, open the live address, then `/demo`, and finish the whole flow.
+
+## If the live site shows an error
+
+- Open the project in Vercel, then **Logs**. A missing or malformed variable is reported by name
+  when the server starts. Values are never printed.
+- The database certificate `certs/supabase-ca.crt` is listed in `next.config.ts` so Vercel ships
+  it with the app. A "no such file" error naming it means that list was lost.
 
 ## Known limits
 
