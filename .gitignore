@@ -37,6 +37,15 @@ yarn-error.log*
 # the example file holds variable names only, so it is safe to commit
 !.env.example
 
+# local project notes, kept on this computer only
+/CLAUDE.md
+/AGENTS.md
+/.claude/
+/brand.md
+/build-plan.md
+/docs/deploy.md
+/docs/judging-criteria.md
+
 # vercel
 .vercel
 
