@@ -29,6 +29,9 @@ const securityHeaders = [
 ];
 
 const nextConfig: NextConfig = {
+  // db.ts reads this file at runtime. Vercel only ships files it can trace from the code, and a
+  // path built with process.cwd() is easy to miss, so it is named here to be sure it is included.
+  outputFileTracingIncludes: { "/**/*": ["./certs/supabase-ca.crt"] },
   async headers() {
     return [{ source: "/:path*", headers: securityHeaders }];
   },
